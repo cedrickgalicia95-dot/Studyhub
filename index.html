@@ -1,1 +1,1725 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>StudyHub – Student Productivity App</title>
 
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Configuration for Theme Colors & Fonts -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#F5F3FF',
+                            100: '#EDE9FE',
+                            200: '#DDD6FE',
+                            300: '#C4B5FD',
+                            400: '#A78BFA',
+                            500: '#8B5CF6',
+                            600: '#7C3AED',
+                            700: '#6D28D9',
+                            800: '#5B21B6',
+                            900: '#4C1D95',
+                        },
+                        obsidian: {
+                            800: '#18181B',
+                            900: '#09090B',
+                            950: '#050507',
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style>
+        /* Custom Scrollbar & Subtle Animations */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(124, 58, 237, 0.35);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(124, 58, 237, 0.65);
+        }
+        .view-section {
+            animation: fadeSlideIn 0.25s ease-out;
+        }
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-zinc-50 text-zinc-900 dark:bg-obsidian-900 dark:text-zinc-100 font-sans antialiased selection:bg-brand-600 selection:text-white transition-colors duration-200">
+
+    <!-- Toast Notification Container (Replaces native alert/confirm) -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Custom Confirmation Modal (Replaces native confirm) -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-obsidian-800 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl transform transition-all">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </div>
+                <h3 id="confirm-title" class="text-lg font-bold text-zinc-900 dark:text-white">Confirm Action</h3>
+            </div>
+            <p id="confirm-message" class="text-sm text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">Are you sure you want to proceed?</p>
+            <div class="flex justify-end gap-3">
+                <button id="confirm-cancel-btn" type="button" class="px-4 py-2.5 rounded-xl text-sm font-semibold border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">Cancel</button>
+                <button id="confirm-ok-btn" type="button" class="px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm transition">Confirm Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Shell -->
+    <div class="min-h-screen flex flex-col md:flex-row">
+
+        <!-- DESKTOP SIDEBAR (Fixed Left Navigation on md+ screens) -->
+        <aside class="hidden md:flex md:w-72 md:flex-col md:fixed md:inset-y-0 bg-white dark:bg-obsidian-800 border-r border-zinc-200 dark:border-zinc-800/90 z-30">
+            <!-- Brand Header -->
+            <div class="flex items-center justify-between px-6 h-20 border-b border-zinc-100 dark:border-zinc-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-600 to-black flex items-center justify-center text-white shadow-md shadow-brand-600/20">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    </div>
+                    <div>
+                        <span class="text-lg font-extrabold tracking-tight text-zinc-900 dark:text-white">Study<span class="text-brand-600 dark:text-brand-400">Hub</span></span>
+                        <p class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">OOP Student Workspace</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto" aria-label="Sidebar Navigation">
+                <button data-nav="dashboard" class="nav-btn w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                    <span>Dashboard</span>
+                </button>
+
+                <button data-nav="tasks" class="nav-btn w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all">
+                    <div class="flex items-center gap-3.5">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        <span>Task Manager</span>
+                    </div>
+                    <span id="sidebar-pending-badge" class="px-2 py-0.5 text-xs font-bold rounded-full bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300">0</span>
+                </button>
+
+                <button data-nav="subjects" class="nav-btn w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    <span>Subjects</span>
+                </button>
+
+                <button data-nav="schedule" class="nav-btn w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span>Study Schedule</span>
+                </button>
+
+                <button data-nav="notes" class="nav-btn w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <span>Study Notes</span>
+                </button>
+
+                <div class="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800">
+                    <p class="px-4 pb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Professor Demo</p>
+                    <button data-nav="oop" class="nav-btn w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                        <span>OOP Architecture</span>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Sidebar Footer: Theme Switcher & Progress Mini-Card -->
+            <div class="p-4 border-t border-zinc-100 dark:border-zinc-800 space-y-3">
+                <div class="p-3.5 rounded-2xl bg-zinc-950 text-white dark:bg-black border border-zinc-800">
+                    <div class="flex items-center justify-between text-xs mb-1.5">
+                        <span class="text-zinc-400 font-medium">Completion Rate</span>
+                        <span id="sidebar-progress-text" class="font-bold text-brand-400">0%</span>
+                    </div>
+                    <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                        <div id="sidebar-progress-bar" class="h-full bg-gradient-to-r from-brand-600 to-brand-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <button id="desktop-theme-toggle" type="button" class="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 hover:border-brand-500 text-sm font-semibold transition">
+                    <span class="flex items-center gap-2.5">
+                        <span id="theme-icon-desktop">🌙</span>
+                        <span id="theme-label-desktop">Dark Mode</span>
+                    </span>
+                    <span class="text-xs px-2 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">Toggle</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MOBILE TOP HEADER (Visible on < md screens) -->
+        <header class="md:hidden sticky top-0 z-30 bg-white/95 dark:bg-obsidian-800/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600 to-black flex items-center justify-center text-white font-bold shadow">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                </div>
+                <span class="text-base font-extrabold tracking-tight text-zinc-900 dark:text-white">Study<span class="text-brand-600 dark:text-brand-400">Hub</span></span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button data-nav="oop" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
+                    OOP Info
+                </button>
+                <button id="mobile-theme-toggle" type="button" aria-label="Toggle Theme" class="p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm">
+                    <span id="theme-icon-mobile">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 md:pl-72 pb-24 md:pb-12">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 md:pt-8">
+
+                <!-- ========================================================= -->
+                <!-- VIEW 1: DASHBOARD                                         -->
+                <!-- ========================================================= -->
+                <section id="view-dashboard" class="view-section space-y-6">
+                    <!-- Top Welcome Banner -->
+                    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-obsidian-900 via-zinc-900 to-brand-900 text-white p-6 sm:p-8 shadow-xl border border-zinc-800">
+                        <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                            <div>
+                                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-brand-300 text-xs font-semibold mb-3 border border-white/10">
+                                    <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
+                                    Academic Productivity Workspace
+                                </div>
+                                <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Welcome back to StudyHub</h1>
+                                <p class="text-zinc-300 text-sm sm:text-base mt-1.5 max-w-xl">Track your coursework, organize subjects, plan study sessions, and explore clean ES6+ Object-Oriented Architecture.</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <button onclick="app.navigate('tasks')" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold shadow-lg shadow-brand-600/30 transition">
+                                    + New Task
+                                </button>
+                                <button id="btn-reset-demo" type="button" class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-semibold border border-white/15 transition">
+                                    Reset Demo Data
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Decorative Glow -->
+                        <div class="absolute -right-12 -bottom-16 w-64 h-64 bg-brand-600/30 rounded-full blur-3xl pointer-events-none"></div>
+                    </div>
+
+                    <!-- KPI Metrics Grid -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white dark:bg-obsidian-800 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Total Tasks</span>
+                                <span class="p-2 rounded-xl bg-brand-50 dark:bg-brand-950/70 text-brand-600 dark:text-brand-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                </span>
+                            </div>
+                            <p id="stat-total-tasks" class="text-3xl font-extrabold text-zinc-900 dark:text-white">0</p>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">All assigned items</p>
+                        </div>
+
+                        <div class="bg-white dark:bg-obsidian-800 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Completed</span>
+                                <span class="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                </span>
+                            </div>
+                            <p id="stat-completed-tasks" class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">0</p>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Finished assignments</p>
+                        </div>
+
+                        <div class="bg-white dark:bg-obsidian-800 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pending</span>
+                                <span class="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </span>
+                            </div>
+                            <p id="stat-pending-tasks" class="text-3xl font-extrabold text-amber-600 dark:text-amber-400">0</p>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Remaining to finish</p>
+                        </div>
+
+                        <div class="bg-white dark:bg-obsidian-800 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Subjects</span>
+                                <span class="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                </span>
+                            </div>
+                            <p id="stat-total-subjects" class="text-3xl font-extrabold text-zinc-900 dark:text-white">0</p>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Active courses</p>
+                        </div>
+                    </div>
+
+                    <!-- Progress Tracker Card + Upcoming Schedule -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Progress Tracker -->
+                        <div class="bg-white dark:bg-obsidian-800 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <h2 class="text-base font-bold text-zinc-900 dark:text-white">Progress Tracker</h2>
+                                    <span id="dash-completion-badge" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300">0%</span>
+                                </div>
+                                <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-6">Real-time completion analytics calculated automatically from your tasks.</p>
+
+                                <!-- Visual Progress Bar -->
+                                <div class="w-full h-4 bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden p-0.5 border border-zinc-200 dark:border-zinc-700 mb-6">
+                                    <div id="dash-progress-bar" class="h-full bg-gradient-to-r from-brand-700 via-brand-600 to-brand-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+
+                                <div class="space-y-3 text-sm">
+                                    <div class="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-obsidian-900">
+                                        <span class="flex items-center gap-2 font-medium text-zinc-600 dark:text-zinc-300">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Completed Tasks
+                                        </span>
+                                        <span id="tracker-completed-count" class="font-bold text-zinc-900 dark:text-white">0</span>
+                                    </div>
+                                    <div class="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-obsidian-900">
+                                        <span class="flex items-center gap-2 font-medium text-zinc-600 dark:text-zinc-300">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Pending Tasks
+                                        </span>
+                                        <span id="tracker-pending-count" class="font-bold text-zinc-900 dark:text-white">0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onclick="app.navigate('oop')" class="mt-6 w-full py-2.5 px-4 rounded-xl bg-zinc-900 dark:bg-black hover:bg-brand-600 dark:hover:bg-brand-600 text-white text-xs font-bold tracking-wide uppercase transition flex items-center justify-center gap-2">
+                                <span>Inspect OOP Implementation</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Recent Polymorphic Activities Feed -->
+                        <div class="lg:col-span-2 bg-white dark:bg-obsidian-800 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h2 class="text-base font-bold text-zinc-900 dark:text-white">Recent Activities</h2>
+                                    <p class="text-xs text-zinc-500 dark:text-zinc-400">Rendered via polymorphic <code class="font-mono text-brand-600 dark:text-brand-400">record.getSummary()</code> calls across subclasses</p>
+                                </div>
+                                <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">Live Feed</span>
+                            </div>
+                            <div id="dashboard-recent-activities" class="space-y-3 max-h-80 overflow-y-auto pr-1">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- VIEW 2: TASK MANAGER                                      -->
+                <!-- ========================================================= -->
+                <section id="view-tasks" class="view-section hidden space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h1 class="text-2xl font-extrabold text-zinc-900 dark:text-white">Task Manager</h1>
+                            <p class="text-sm text-zinc-500 dark:text-zinc-400">Manage assignments, set deadlines, and prioritize coursework.</p>
+                        </div>
+                    </div>
+
+                    <!-- Add / Edit Task Form Card -->
+                    <div class="bg-white dark:bg-obsidian-800 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                        <h2 id="task-form-title" class="text-base font-bold text-zinc-900 dark:text-white mb-4">Add New Task</h2>
+                        <form id="task-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4" novalidate>
+                            <input type="hidden" id="task-edit-id" value="">
+
+                            <div class="lg:col-span-4">
+                                <label for="task-title" class="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Task Title *</label>
+                                <input type="text" id="task-title" placeholder="e.g., Implement Binary Search Tree" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                            </div>
+
+                            <div class="lg:col-span-3">
+                                <label for="task-subject" class="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Subject *</label>
+                                <select id="task-subject" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+
+                            <div class="lg:col-span-2">
+                                <label for="task-deadline" class="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Deadline *</label>
+                                <input type="date" id="task-deadline" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                            </div>
+
+                            <div class="lg:col-span-3">
+                                <label for="task-priority" class="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Priority Level</label>
+                                <select id="task-priority" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                                    <option value="Low">Low Priority</option>
+                                    <option value="Medium" selected>Medium Priority</option>
+                                    <option value="High">High Priority</option>
+                                </select>
+                            </div>
+
+                            <div class="sm:col-span-2 lg:col-span-12 flex flex-wrap items-center justify-end gap-2 pt-1">
+                                <button type="button" id="task-cancel-edit" class="hidden px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">Cancel Edit</button>
+                                <button type="submit" id="task-submit-btn" class="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-md shadow-brand-600/20 transition">
+                                    Save Task
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Filter Toolbar -->
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex flex-wrap items-center gap-2" id="task-filter-buttons">
+                            <button data-filter="all" class="task-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-zinc-900 text-white dark:bg-brand-600">All Tasks</button>
+                            <button data-filter="pending" class="task-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-obsidian-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300">Pending</button>
+                            <button data-filter="completed" class="task-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-obsidian-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300">Completed</button>
+                            <button data-filter="High" class="task-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-obsidian-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300">High Priority</button>
+                        </div>
+                        <span id="task-count-label" class="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Showing 0 tasks</span>
+                    </div>
+
+                    <!-- Task List Container -->
+                    <div id="task-list" class="space-y-3">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- VIEW 3: SUBJECT MANAGER                                   -->
+                <!-- ========================================================= -->
+                <section id="view-subjects" class="view-section hidden space-y-6">
+                    <div>
+                        <h1 class="text-2xl font-extrabold text-zinc-900 dark:text-white">Subject Manager</h1>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400">Organize your enrolled university courses and descriptions.</p>
+                    </div>
+
+                    <!-- Add / Edit Subject Form -->
+                    <div class="bg-white dark:bg-obsidian-800 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                        <h2 id="subject-form-title" class="text-base font-bold text-zinc-900 dark:text-white mb-4">Add New Subject</h2>
+                        <form id="subject-form" class="grid grid-cols-1 sm:grid-cols-12 gap-4" novalidate>
+                            <input type="hidden" id="subject-edit-id" value="">
+
+                            <div class="sm:col-span-4">
+                                <label for="subject-name" class="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Subject Name *</label>
+                                <input type="text" id="subject-name" placeholder="e.g., CS 202 - Object-Oriented Programming" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                            </div>
+
+                            <div class="sm:col-span-6">
+                                <label for="subject-desc" class="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Description *</label>
+                                <input type="text" id="subject-desc" placeholder="e.g., Encapsulation, Inheritance, Polymorphism & Design Patterns" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                            </div>
+
+                            <div class="sm:col-span-2 flex items-end gap-2">
+                                <button type="submit" id="subject-submit-btn" class="w-full py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-md shadow-brand-600/20 transition">
+                                    Save
+                                </button>
+                                <button type="button" id="subject-cancel-edit" class="hidden py-2.5 px-3 rounded-xl border border-zinc-300 dark:border-zinc-700 text-sm font-semibold">
+                                    ✕
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Subjects Grid -->
+                    <div id="subjects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- VIEW 4: STUDY SCHEDULE                                    -->
+                <!-- ========================================================= -->
+                <section id="view-schedule" class="view-section hidden space-y-6">
+                    <div>
+                        <h1 class="text-2xl font-extrabold text-zinc-900 dark:text-white">Study Schedule</h1>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400">Plan focused study blocks, lab reviews, and exam prep sessions.</p>
+                    </div>
+
+                    <!-- Add / Edit Schedule Form -->
+                    <div class="bg-white dark:bg-obsidian-800 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                        <h2 id="schedule-form-title" class="text-base font-bold text-zinc-900 dark:text-white mb-4">Schedule Study Session</h2>
+                        <form id="schedule-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4" novalidate>
+                            <input type="hidden" id="schedule-edit-id" value="">
+
+                            <div class="lg:col-span-4">
+                                <label for="schedule-activity" class="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Study Activity *</label>
+                                <input type="text" id="schedule-activity" placeholder="e.g., Practice Polymorphism Exercises" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                            </div>
+
+                            <div class="lg:col-span-3">
+                                <label for="schedule-subject" class="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Subject *</label>
+                                <select id="schedule-subject" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+
+                            <div class="lg:col-span-2">
+                                <label for="schedule-date" class="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Date *</label>
+                                <input type="date" id="schedule-date" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                            </div>
+
+                            <div class="lg:col-span-3">
+                                <label for="schedule-time" class="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Time Slot *</label>
+                                <input type="time" id="schedule-time" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                            </div>
+
+                            <div class="sm:col-span-2 lg:col-span-12 flex justify-end gap-2">
+                                <button type="button" id="schedule-cancel-edit" class="hidden px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 text-sm font-semibold">Cancel</button>
+                                <button type="submit" id="schedule-submit-btn" class="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-md shadow-brand-600/20 transition">
+                                    Add to Schedule
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Schedule Timeline List -->
+                    <div id="schedule-list" class="space-y-3">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- VIEW 5: STUDY NOTES (With Auto-Save)                      -->
+                <!-- ========================================================= -->
+                <section id="view-notes" class="view-section hidden space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h1 class="text-2xl font-extrabold text-zinc-900 dark:text-white">Study Notes</h1>
+                            <p class="text-sm text-zinc-500 dark:text-zinc-400">Create lecture summaries with real-time automatic LocalStorage saving.</p>
+                        </div>
+                        <button id="btn-new-note" type="button" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-md shadow-brand-600/20 transition self-start sm:self-auto">
+                            + Create Note
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <!-- Notes Sidebar List -->
+                        <div class="lg:col-span-4 space-y-3">
+                            <input type="text" id="notes-search" placeholder="Search notes..." class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-obsidian-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                            <div id="notes-list" class="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                                <!-- Rendered dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Live Auto-Save Note Editor -->
+                        <div class="lg:col-span-8 bg-white dark:bg-obsidian-800 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
+                            <div class="flex flex-wrap items-center justify-between gap-2 pb-4 mb-4 border-b border-zinc-100 dark:border-zinc-800">
+                                <span id="note-autosave-status" class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    Auto-save ready
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <button id="btn-delete-active-note" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 transition">
+                                        Delete Note
+                                    </button>
+                                </div>
+                            </div>
+
+                            <input type="hidden" id="active-note-id" value="">
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                                <div class="sm:col-span-2">
+                                    <label for="note-title-input" class="sr-only">Note Title</label>
+                                    <input type="text" id="note-title-input" placeholder="Note Title..." class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 font-bold text-base focus:outline-none focus:ring-2 focus:ring-brand-600">
+                                </div>
+                                <div>
+                                    <label for="note-subject-select" class="sr-only">Note Subject</label>
+                                    <select id="note-subject-select" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                                        <!-- Populated dynamically -->
+                                    </select>
+                                </div>
+                            </div>
+
+                            <label for="note-content-input" class="sr-only">Note Content</label>
+                            <textarea id="note-content-input" rows="12" placeholder="Start typing your lecture notes here... Changes are automatically saved to LocalStorage as you type." class="w-full flex-1 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-obsidian-900 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-600 resize-y"></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- VIEW 6: OOP ARCHITECTURE & PROFESSOR SHOWCASE             -->
+                <!-- ========================================================= -->
+                <section id="view-oop" class="view-section hidden space-y-6">
+                    <div class="bg-gradient-to-r from-brand-700 to-obsidian-900 text-white p-6 sm:p-8 rounded-3xl shadow-lg">
+                        <span class="px-3 py-1 rounded-full bg-white/15 text-xs font-bold uppercase tracking-wider">Software Architecture Documentation</span>
+                        <h1 class="text-2xl sm:text-3xl font-extrabold mt-3">Object-Oriented Programming in StudyHub</h1>
+                        <p class="text-brand-100 text-sm sm:text-base mt-2 max-w-3xl">
+                            This application is engineered using native ES6+ JavaScript classes demonstrating all four pillars of Object-Oriented Programming. Click the interactive demo runner below to execute real polymorphic methods on your live data!
+                        </p>
+                    </div>
+
+                    <!-- Interactive Live Polymorphism & OOP Console Runner -->
+                    <div class="bg-obsidian-900 text-zinc-100 p-6 rounded-2xl border border-zinc-800 shadow-xl">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-4 border-b border-zinc-800">
+                            <div>
+                                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-brand-500"></span>
+                                    Interactive Live OOP Execution Console
+                                </h2>
+                                <p class="text-xs text-zinc-400 mt-0.5">Test Polymorphism, Encapsulation guards, and Abstraction rules directly in the browser.</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button id="btn-demo-polymorphism" type="button" class="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition">
+                                    ▶ Run Polymorphic getSummary()
+                                </button>
+                                <button id="btn-demo-abstraction" type="button" class="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold border border-zinc-700 transition">
+                                    ▶ Test Abstract BaseRecord Guard
+                                </button>
+                                <button id="btn-demo-encapsulation" type="button" class="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold border border-zinc-700 transition">
+                                    ▶ Test Private #Field Validation
+                                </button>
+                            </div>
+                        </div>
+                        <pre id="oop-console-output" class="font-mono text-xs sm:text-sm text-emerald-400 bg-black/70 p-4 rounded-xl overflow-x-auto leading-relaxed border border-zinc-800/80">// Click any button above to execute live ES6+ OOP demonstrations on StudyHub's classes...</pre>
+                    </div>
+
+                    <!-- 4 Pillars Explanation Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- 1. Encapsulation -->
+                        <div class="bg-white dark:bg-obsidian-800 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3">
+                            <div class="flex items-center gap-3">
+                                <span class="w-9 h-9 rounded-xl bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 font-extrabold flex items-center justify-center">1</span>
+                                <h3 class="text-lg font-extrabold text-zinc-900 dark:text-white">Encapsulation</h3>
+                            </div>
+                            <p class="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                                <strong>Simple Explanation:</strong> Bundling data and methods inside a class while hiding internal state using private fields (<code class="font-mono text-brand-600 dark:text-brand-400">#</code>). External code cannot corrupt data directly; it must go through validated getters and setters.
+                            </p>
+                            <pre class="font-mono text-xs bg-zinc-950 text-zinc-200 p-4 rounded-xl overflow-x-auto"><code>class Task extends BaseRecord {
+  #title;      // Private field
+  #priority;   // Protected state
+
+  set title(value) {
+    if (!value || value.trim().length &lt; 2) {
+      throw new Error("Invalid task title");
+    }
+    this.#title = value.trim();
+  }
+  get title() { return this.#title; }
+}</code></pre>
+                        </div>
+
+                        <!-- 2. Inheritance -->
+                        <div class="bg-white dark:bg-obsidian-800 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3">
+                            <div class="flex items-center gap-3">
+                                <span class="w-9 h-9 rounded-xl bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 font-extrabold flex items-center justify-center">2</span>
+                                <h3 class="text-lg font-extrabold text-zinc-900 dark:text-white">Inheritance</h3>
+                            </div>
+                            <p class="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                                <strong>Simple Explanation:</strong> Child classes (<code class="font-mono text-brand-600 dark:text-brand-400">Task</code>, <code class="font-mono text-brand-600 dark:text-brand-400">Subject</code>, <code class="font-mono text-brand-600 dark:text-brand-400">StudySchedule</code>, <code class="font-mono text-brand-600 dark:text-brand-400">StudyNote</code>) inherit common properties like <code class="font-mono">#id</code>, <code class="font-mono">#createdAt</code>, and <code class="font-mono">touch()</code> from the parent <code class="font-mono">BaseRecord</code> class using <code class="font-mono">extends</code> and <code class="font-mono">super()</code>.
+                            </p>
+                            <pre class="font-mono text-xs bg-zinc-950 text-zinc-200 p-4 rounded-xl overflow-x-auto"><code>class StudyNote extends BaseRecord {
+  #content;
+  constructor(data) {
+    super(data); // Calls BaseRecord constructor
+    this.#content = data.content || "";
+  }
+}</code></pre>
+                        </div>
+
+                        <!-- 3. Polymorphism -->
+                        <div class="bg-white dark:bg-obsidian-800 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3">
+                            <div class="flex items-center gap-3">
+                                <span class="w-9 h-9 rounded-xl bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 font-extrabold flex items-center justify-center">3</span>
+                                <h3 class="text-lg font-extrabold text-zinc-900 dark:text-white">Polymorphism</h3>
+                            </div>
+                            <p class="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                                <strong>Simple Explanation:</strong> Different child classes override the exact same method name (<code class="font-mono text-brand-600 dark:text-brand-400">getSummary()</code> and <code class="font-mono text-brand-600 dark:text-brand-400">validate()</code>) to produce tailored behavior when called uniformly in loops.
+                            </p>
+                            <pre class="font-mono text-xs bg-zinc-950 text-zinc-200 p-4 rounded-xl overflow-x-auto"><code>// Same method call, different runtime behavior:
+records.forEach(record =&gt; {
+  console.log(record.getSummary());
+});
+// Task -&gt; "[High] Complete Lab (Due: 2026-11-28)"
+// Note -&gt; "Note: OOP Lecture (142 chars)"</code></pre>
+                        </div>
+
+                        <!-- 4. Abstraction -->
+                        <div class="bg-white dark:bg-obsidian-800 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3">
+                            <div class="flex items-center gap-3">
+                                <span class="w-9 h-9 rounded-xl bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 font-extrabold flex items-center justify-center">4</span>
+                                <h3 class="text-lg font-extrabold text-zinc-900 dark:text-white">Abstraction</h3>
+                            </div>
+                            <p class="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                                <strong>Simple Explanation:</strong> Hiding complex implementation details behind clean interfaces. <code class="font-mono text-brand-600 dark:text-brand-400">BaseRecord</code> prevents direct instantiation (<code class="font-mono">new.target === BaseRecord</code>) and enforces abstract contracts, while <code class="font-mono">StorageRepository</code> hides JSON &amp; <code class="font-mono">localStorage</code> mechanics.
+                            </p>
+                            <pre class="font-mono text-xs bg-zinc-950 text-zinc-200 p-4 rounded-xl overflow-x-auto"><code>class BaseRecord {
+  constructor() {
+    if (new.target === BaseRecord) {
+      throw new Error("Cannot instantiate abstract class!");
+    }
+  }
+  getSummary() { throw new Error("Must override!"); }
+}</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+
+        <!-- MOBILE BOTTOM NAVIGATION BAR (Optimized for Android Chrome) -->
+        <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-obsidian-800/95 backdrop-blur-md border-t border-zinc-200 dark:border-zinc-800 grid grid-cols-5 h-16 px-1" aria-label="Mobile Navigation">
+            <button data-nav="dashboard" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                <span>Home</span>
+            </button>
+            <button data-nav="tasks" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                <span>Tasks</span>
+            </button>
+            <button data-nav="subjects" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                <span>Subjects</span>
+            </button>
+            <button data-nav="schedule" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span>Schedule</span>
+            </button>
+            <button data-nav="notes" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                <span>Notes</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- JAVASCRIPT ES6+ OBJECT-ORIENTED PROGRAMMING ARCHITECTURE              -->
+    <!-- ===================================================================== -->
+    <script>
+        /**
+         * ====================================================================
+         * 1. ABSTRACTION & 2. ENCAPSULATION: Abstract Base Class `BaseRecord`
+         * ====================================================================
+         * - Demonstrates ABSTRACTION by preventing direct instantiation
+         *   (`new.target === BaseRecord`) and defining abstract contract methods
+         *   (`validate()`, `getSummary()`, `getRecordType()`) that subclasses
+         *   must implement.
+         * - Demonstrates ENCAPSULATION using private fields (`#id`, `#createdAt`,
+         *   `#updatedAt`) accessible only via controlled getters and helper methods.
+         */
+        class BaseRecord {
+            #id;
+            #createdAt;
+            #updatedAt;
+
+            constructor({ id = null, createdAt = null, updatedAt = null } = {}) {
+                // Enforce Abstraction: BaseRecord cannot be instantiated directly
+                if (new.target === BaseRecord) {
+                    throw new Error("Abstraction Error: BaseRecord is an abstract class and cannot be instantiated directly.");
+                }
+
+                this.#id = id || `rec_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+                this.#createdAt = createdAt || new Date().toISOString();
+                this.#updatedAt = updatedAt || this.#createdAt;
+            }
+
+            // Encapsulated Getters (Read-only protection for ID and creation timestamp)
+            get id() {
+                return this.#id;
+            }
+
+            get createdAt() {
+                return this.#createdAt;
+            }
+
+            get updatedAt() {
+                return this.#updatedAt;
+            }
+
+            // Protected state mutator for subclasses
+            touch() {
+                this.#updatedAt = new Date().toISOString();
+            }
+
+            // Abstract Method Contract 1: Must be overridden by child classes
+            validate() {
+                throw new Error(`Abstraction Error: ${this.constructor.name} must implement validate().`);
+            }
+
+            // Abstract Method Contract 2: Polymorphic summary representation
+            getSummary() {
+                throw new Error(`Abstraction Error: ${this.constructor.name} must implement getSummary().`);
+            }
+
+            // Abstract Method Contract 3: Polymorphic type label
+            getRecordType() {
+                throw new Error(`Abstraction Error: ${this.constructor.name} must implement getRecordType().`);
+            }
+
+            // Base serialization helper inherited by all subclasses
+            toBaseJSON() {
+                return {
+                    id: this.#id,
+                    createdAt: this.#createdAt,
+                    updatedAt: this.#updatedAt
+                };
+            }
+        }
+
+        /**
+         * ====================================================================
+         * 3. INHERITANCE & 4. POLYMORPHISM: Child Class `Subject`
+         * ====================================================================
+         * Inherits `#id`, `#createdAt`, `#updatedAt`, and `touch()` from BaseRecord.
+         */
+        class Subject extends BaseRecord {
+            #name;
+            #description;
+
+            constructor({ id, createdAt, updatedAt, name, description }) {
+                super({ id, createdAt, updatedAt });
+                this.name = name;
+                this.description = description;
+            }
+
+            get name() {
+                return this.#name;
+            }
+
+            set name(value) {
+                if (!value || typeof value !== "string" || value.trim().length < 2) {
+                    throw new Error("Subject name must be at least 2 characters long.");
+                }
+                this.#name = value.trim();
+                this.touch();
+            }
+
+            get description() {
+                return this.#description;
+            }
+
+            set description(value) {
+                if (!value || typeof value !== "string" || value.trim().length < 3) {
+                    throw new Error("Subject description must be at least 3 characters long.");
+                }
+                this.#description = value.trim();
+                this.touch();
+            }
+
+            // Polymorphic Override
+            validate() {
+                return Boolean(this.#name && this.#description);
+            }
+
+            // Polymorphic Override
+            getRecordType() {
+                return "Subject";
+            }
+
+            // Polymorphic Override
+            getSummary() {
+                return `Course "${this.#name}" — ${this.#description}`;
+            }
+
+            toJSON() {
+                return {
+                    ...this.toBaseJSON(),
+                    name: this.#name,
+                    description: this.#description
+                };
+            }
+        }
+
+        /**
+         * ====================================================================
+         * 3. INHERITANCE & 4. POLYMORPHISM: Child Class `Task`
+         * ====================================================================
+         */
+        class Task extends BaseRecord {
+            #title;
+            #subjectId;
+            #deadline;
+            #priority;
+            #completed;
+
+            static ALLOWED_PRIORITIES = ["Low", "Medium", "High"];
+
+            constructor({ id, createdAt, updatedAt, title, subjectId, deadline, priority = "Medium", completed = false }) {
+                super({ id, createdAt, updatedAt });
+                this.title = title;
+                this.subjectId = subjectId;
+                this.deadline = deadline;
+                this.priority = priority;
+                this.#completed = Boolean(completed);
+            }
+
+            get title() {
+                return this.#title;
+            }
+
+            set title(value) {
+                if (!value || typeof value !== "string" || value.trim().length < 2) {
+                    throw new Error("Task title must be at least 2 characters long.");
+                }
+                this.#title = value.trim();
+                this.touch();
+            }
+
+            get subjectId() {
+                return this.#subjectId;
+            }
+
+            set subjectId(value) {
+                if (!value) {
+                    throw new Error("Please assign a valid subject to the task.");
+                }
+                this.#subjectId = value;
+                this.touch();
+            }
+
+            get deadline() {
+                return this.#deadline;
+            }
+
+            set deadline(value) {
+                if (!value) {
+                    throw new Error("Please select a valid deadline date.");
+                }
+                this.#deadline = value;
+                this.touch();
+            }
+
+            get priority() {
+                return this.#priority;
+            }
+
+            set priority(value) {
+                if (!Task.ALLOWED_PRIORITIES.includes(value)) {
+                    throw new Error("Priority must be Low, Medium, or High.");
+                }
+                this.#priority = value;
+                this.touch();
+            }
+
+            get completed() {
+                return this.#completed;
+            }
+
+            toggleCompleted() {
+                this.#completed = !this.#completed;
+                this.touch();
+                return this.#completed;
+            }
+
+            // Polymorphic Override
+            validate() {
+                return Boolean(this.#title && this.#subjectId && this.#deadline);
+            }
+
+            // Polymorphic Override
+            getRecordType() {
+                return "Task";
+            }
+
+            // Polymorphic Override
+            getSummary() {
+                const status = this.#completed ? "Completed" : "Pending";
+                return `[${this.#priority} Priority • ${status}] ${this.#title} (Due: ${this.#deadline})`;
+            }
+
+            toJSON() {
+                return {
+                    ...this.toBaseJSON(),
+                    title: this.#title,
+                    subjectId: this.#subjectId,
+                    deadline: this.#deadline,
+                    priority: this.#priority,
+                    completed: this.#completed
+                };
+            }
+        }
+
+        /**
+         * ====================================================================
+         * 3. INHERITANCE & 4. POLYMORPHISM: Child Class `StudySchedule`
+         * ====================================================================
+         */
+        class StudySchedule extends BaseRecord {
+            #activity;
+            #subjectId;
+            #date;
+            #time;
+
+            constructor({ id, createdAt, updatedAt, activity, subjectId, date, time }) {
+                super({ id, createdAt, updatedAt });
+                this.activity = activity;
+                this.subjectId = subjectId;
+                this.date = date;
+                this.time = time;
+            }
+
+            get activity() {
+                return this.#activity;
+            }
+
+            set activity(value) {
+                if (!value || typeof value !== "string" || value.trim().length < 2) {
+                    throw new Error("Study activity title must be at least 2 characters.");
+                }
+                this.#activity = value.trim();
+                this.touch();
+            }
+
+            get subjectId() {
+                return this.#subjectId;
+            }
+
+            set subjectId(value) {
+                if (!value) {
+                    throw new Error("Please select a subject for this study session.");
+                }
+                this.#subjectId = value;
+                this.touch();
+            }
+
+            get date() {
+                return this.#date;
+            }
+
+            set date(value) {
+                if (!value) {
+                    throw new Error("Please select a study session date.");
+                }
+                this.#date = value;
+                this.touch();
+            }
+
+            get time() {
+                return this.#time;
+            }
+
+            set time(value) {
+                if (!value) {
+                    throw new Error("Please select a study session time.");
+                }
+                this.#time = value;
+                this.touch();
+            }
+
+            // Polymorphic Override
+            validate() {
+                return Boolean(this.#activity && this.#subjectId && this.#date && this.#time);
+            }
+
+            // Polymorphic Override
+            getRecordType() {
+                return "Schedule";
+            }
+
+            // Polymorphic Override
+            getSummary() {
+                return `Session: "${this.#activity}" scheduled on ${this.#date} at ${this.#time}`;
+            }
+
+            toJSON() {
+                return {
+                    ...this.toBaseJSON(),
+                    activity: this.#activity,
+                    subjectId: this.#subjectId,
+                    date: this.#date,
+                    time: this.#time
+                };
+            }
+        }
+
+        /**
+         * ====================================================================
+         * 3. INHERITANCE & 4. POLYMORPHISM: Child Class `StudyNote`
+         * ====================================================================
+         */
+        class StudyNote extends BaseRecord {
+            #title;
+            #subjectId;
+            #content;
+
+            constructor({ id, createdAt, updatedAt, title, subjectId, content = "" }) {
+                super({ id, createdAt, updatedAt });
+                this.title = title;
+                this.subjectId = subjectId;
+                this.content = content;
+            }
+
+            get title() {
+                return this.#title;
+            }
+
+            set title(value) {
+                const clean = (value || "").trim();
+                this.#title = clean.length > 0 ? clean : "Untitled Lecture Note";
+                this.touch();
+            }
+
+            get subjectId() {
+                return this.#subjectId;
+            }
+
+            set subjectId(value) {
+                this.#subjectId = value || "";
+                this.touch();
+            }
+
+            get content() {
+                return this.#content;
+            }
+
+            set content(value) {
+                this.#content = typeof value === "string" ? value : "";
+                this.touch();
+            }
+
+            // Polymorphic Override
+            validate() {
+                return typeof this.#title === "string" && this.#title.length > 0;
+            }
+
+            // Polymorphic Override
+            getRecordType() {
+                return "Note";
+            }
+
+            // Polymorphic Override
+            getSummary() {
+                const charCount = this.#content.trim().length;
+                return `Note "${this.#title}" (${charCount} characters saved)`;
+            }
+
+            toJSON() {
+                return {
+                    ...this.toBaseJSON(),
+                    title: this.#title,
+                    subjectId: this.#subjectId,
+                    content: this.#content
+                };
+            }
+        }
+
+        /**
+         * ====================================================================
+         * ABSTRACTION & ENCAPSULATION: Generic `StorageRepository`
+         * ====================================================================
+         * Abstracts away all `localStorage` serialization, deserialization, and
+         * collection management behind a clean object-oriented API.
+         */
+        class StorageRepository {
+            #storageKey;
+            #ModelClass;
+            #items;
+
+            constructor(storageKey, ModelClass) {
+                this.#storageKey = storageKey;
+                this.#ModelClass = ModelClass;
+                this.#items = [];
+                this.load();
+            }
+
+            load() {
+                try {
+                    const raw = localStorage.getItem(this.#storageKey);
+                    if (!raw) {
+                        this.#items = [];
+                        return;
+                    }
+                    const parsed = JSON.parse(raw);
+                    this.#items = Array.isArray(parsed)
+                        ? parsed.map(obj => new this.#ModelClass(obj))
+                        : [];
+                } catch (err) {
+                    console.error(`Failed loading ${this.#storageKey}:`, err);
+                    this.#items = [];
+                }
+            }
+
+            save() {
+                try {
+                    const serialized = JSON.stringify(this.#items.map(item => item.toJSON()));
+                    localStorage.setItem(this.#storageKey, serialized);
+                } catch (err) {
+                    console.error(`Failed saving ${this.#storageKey}:`, err);
+                }
+            }
+
+            getAll() {
+                return [...this.#items];
+            }
+
+            findById(id) {
+                return this.#items.find(item => item.id === id) || null;
+            }
+
+            add(instance) {
+                if (!(instance instanceof this.#ModelClass)) {
+                    throw new Error(`Expected instance of ${this.#ModelClass.name}`);
+                }
+                if (!instance.validate()) {
+                    throw new Error("Record validation failed.");
+                }
+                this.#items.unshift(instance);
+                this.save();
+                return instance;
+            }
+
+            remove(id) {
+                const initialLen = this.#items.length;
+                this.#items = this.#items.filter(item => item.id !== id);
+                if (this.#items.length !== initialLen) {
+                    this.save();
+                    return true;
+                }
+                return false;
+            }
+
+            clear() {
+                this.#items = [];
+                this.save();
+            }
+        }
+
+        /**
+         * ====================================================================
+         * ENCAPSULATION: `ThemeManager`
+         * ====================================================================
+         * Manages Light/Dark mode persistence in LocalStorage.
+         */
+        class ThemeManager {
+            #storageKey = "studyhub_theme_v1";
+            #isDark = false;
+
+            constructor() {
+                const saved = localStorage.getItem(this.#storageKey);
+                if (saved === "dark") {
+                    this.#isDark = true;
+                } else if (saved === "light") {
+                    this.#isDark = false;
+                } else {
+                    this.#isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                }
+                this.apply();
+            }
+
+            get isDark() {
+                return this.#isDark;
+            }
+
+            toggle() {
+                this.#isDark = !this.#isDark;
+                localStorage.setItem(this.#storageKey, this.#isDark ? "dark" : "light");
+                this.apply();
+                return this.#isDark;
+            }
+
+            apply() {
+                const html = document.documentElement;
+                if (this.#isDark) {
+                    html.classList.add("dark");
+                } else {
+                    html.classList.remove("dark");
+                }
+
+                const icon = this.#isDark ? "☀️" : "🌙";
+                const label = this.#isDark ? "Light Mode" : "Dark Mode";
+
+                const dIcon = document.getElementById("theme-icon-desktop");
+                const dLabel = document.getElementById("theme-label-desktop");
+                const mIcon = document.getElementById("theme-icon-mobile");
+
+                if (dIcon) dIcon.textContent = icon;
+                if (dLabel) dLabel.textContent = label;
+                if (mIcon) mIcon.textContent = icon;
+            }
+        }
+
+        /**
+         * ====================================================================
+         * MAIN APPLICATION CONTROLLER: `StudyHubApp`
+         * ====================================================================
+         * Coordinates repositories, UI rendering, SPA view routing, form
+         * validation, and polymorphic data aggregation.
+         */
+        class StudyHubApp {
+            #subjectsRepo;
+            #tasksRepo;
+            #schedulesRepo;
+            #notesRepo;
+            #themeManager;
+            #currentView = "dashboard";
+            #taskFilter = "all";
+            #activeNoteId = null;
+            #autoSaveTimer = null;
+
+            constructor() {
+                this.#themeManager = new ThemeManager();
+                this.#subjectsRepo = new StorageRepository("studyhub_subjects_v1", Subject);
+                this.#tasksRepo = new StorageRepository("studyhub_tasks_v1", Task);
+                this.#schedulesRepo = new StorageRepository("studyhub_schedules_v1", StudySchedule);
+                this.#notesRepo = new StorageRepository("studyhub_notes_v1", StudyNote);
+
+                // Seed realistic academic sample data on first launch
+                if (!localStorage.getItem("studyhub_initialized_v1")) {
+                    this.seedSampleData();
+                    localStorage.setItem("studyhub_initialized_v1", "true");
+                }
+
+                this.bindEvents();
+                this.navigate("dashboard");
+                this.renderAll();
+            }
+
+            // Populate initial academic records for instant professor demonstration
+            seedSampleData() {
+                this.#subjectsRepo.clear();
+                this.#tasksRepo.clear();
+                this.#schedulesRepo.clear();
+                this.#notesRepo.clear();
+
+                const s1 = this.#subjectsRepo.add(new Subject({
+                    name: "CS 202 – Object-Oriented Programming",
+                    description: "Encapsulation, Inheritance, Polymorphism, Abstraction & ES6+ Classes"
+                }));
+                const s2 = this.#subjectsRepo.add(new Subject({
+                    name: "IT 214 – Web Systems & Technologies",
+                    description: "Single Page Applications, Responsive Tailwind UI & Client Storage"
+                }));
+                const s3 = this.#subjectsRepo.add(new Subject({
+                    name: "MATH 205 – Discrete Structures",
+                    description: "Graph Theory, Trees, Boolean Algebra & Combinatorics"
+                }));
+
+                const today = new Date();
+                const fmtDate = (offsetDays) => {
+                    const d = new Date(today);
+                    d.setDate(d.getDate() + offsetDays);
+                    return d.toISOString().split("T")[0];
+                };
+
+                this.#tasksRepo.add(new Task({
+                    title: "Submit StudyHub OOP Capstone Project",
+                    subjectId: s1.id,
+                    deadline: fmtDate(2),
+                    priority: "High",
+                    completed: false
+                }));
+                this.#tasksRepo.add(new Task({
+                    title: "Complete Polymorphism & Private Fields Lab",
+                    subjectId: s1.id,
+                    deadline: fmtDate(-1),
+                    priority: "High",
+                    completed: true
+                }));
+                this.#tasksRepo.add(new Task({
+                    title: "Build Responsive Mobile Navigation Drawer",
+                    subjectId: s2.id,
+                    deadline: fmtDate(4),
+                    priority: "Medium",
+                    completed: true
+                }));
+                this.#tasksRepo.add(new Task({
+                    title: "Solve Dijkstra Shortest Path Problem Set",
+                    subjectId: s3.id,
+                    deadline: fmtDate(5),
+                    priority: "Low",
+                    completed: false
+                }));
+
+                this.#schedulesRepo.add(new StudySchedule({
+                    activity: "Professor Live Demo Rehearsal (4 OOP Pillars)",
+                    subjectId: s1.id,
+                    date: fmtDate(1),
+                    time: "14:00"
+                }));
+                this.#schedulesRepo.add(new StudySchedule({
+                    activity: "Discrete Math Graph Traversal Review",
+                    subjectId: s3.id,
+                    date: fmtDate(2),
+                    time: "18:30"
+                }));
+
+                const n1 = this.#notesRepo.add(new StudyNote({
+                    title: "4 Pillars of OOP – Quick Defense Notes",
+                    subjectId: s1.id,
+                    content: "1. ENCAPSULATION: Using private fields (#id, #title) inside ES6 classes with validated getters and setters.\n\n2. INHERITANCE: Task, Subject, StudySchedule, and StudyNote all extend BaseRecord and call super().\n\n3. POLYMORPHISM: Every child class overrides getSummary() and validate() with its own specialized behavior.\n\n4. ABSTRACTION: BaseRecord blocks direct instantiation via new.target === BaseRecord, and StorageRepository hides LocalStorage JSON parsing."
+                }));
+                this.#notesRepo.add(new StudyNote({
+                    title: "SPA Architecture & LocalStorage Checklist",
+                    subjectId: s2.id,
+                    content: "- Single index.html file ready for GitHub Pages\n- Zero page reloads during view navigation\n- Automatic persistence for tasks, subjects, schedules, notes, and Dark Mode"
+                }));
+
+                this.#activeNoteId = n1.id;
+            }
+
+            // UI Toast Feedback Helper
+            showToast(message, type = "success") {
+                const container = document.getElementById("toast-container");
+                const toast = document.createElement("div");
+                const colors = type === "error"
+                    ? "bg-red-600 text-white border-red-500"
+                    : "bg-zinc-900 dark:bg-brand-600 text-white border-zinc-700 dark:border-brand-500";
+
+                toast.className = `pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-xl border shadow-xl text-sm font-semibold transform transition-all duration-300 translate-y-0 opacity-100 ${colors}`;
+                toast.innerHTML = `
+                    <span>${this.escapeHTML(message)}</span>
+                    <button type="button" class="text-white/80 hover:text-white text-xs font-bold">✕</button>
+                `;
+                toast.querySelector("button").addEventListener("click", () => toast.remove());
+                container.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.classList.add("opacity-0", "-translate-y-2");
+                    setTimeout(() => toast.remove(), 300);
+                }, 3200);
+            }
+
+            // Custom Confirmation Dialog Helper
+            confirmAction(title, message) {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById("confirm-modal");
+                    document.getElementById("confirm-title").textContent = title;
+                    document.getElementById("confirm-message").textContent = message;
+                    modal.classList.remove("hidden");
+                    modal.classList.add("flex");
+
+                    const cleanup = (result) => {
+                        modal.classList.add("hidden");
+                        modal.classList.remove("flex");
+                        okBtn.removeEventListener("click", onOk);
+                        cancelBtn.removeEventListener("click", onCancel);
+                        resolve(result);
+                    };
+
+                    const onOk = () => cleanup(true);
+                    const onCancel = () => cleanup(false);
+
+                    const okBtn = document.getElementById("confirm-ok-btn");
+                    const cancelBtn = document.getElementById("confirm-cancel-btn");
+                    okBtn.addEventListener("click", onOk);
+                    cancelBtn.addEventListener("click", onCancel);
+                });
+            }
+
+            escapeHTML(str) {
+                return String(str)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            // SPA View Navigation (Zero Page Reload)
+            navigate(viewName) {
+                this.#currentView = viewName;
+
+                document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
+                const target = document.getElementById(`view-${viewName}`);
+                if (target) target.classList.remove("hidden");
+
+                // Update Desktop Nav Styling
+                document.querySelectorAll(".nav-btn").forEach(btn => {
+                    const isActive = btn.dataset.nav === viewName;
+                    btn.className = isActive
+                        ? "nav-btn w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold bg-brand-600 text-white shadow-md shadow-brand-600/25 transition-all"
+                        : "nav-btn w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/70 hover:text-zinc-900 dark:hover:text-white transition-all";
+                });
+
+                // Update Mobile Bottom Nav Styling
+                document.querySelectorAll(".nav-btn-mobile").forEach(btn => {
+                    const isActive = btn.dataset.nav === viewName;
+                    btn.className = isActive
+                        ? "nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-brand-600 dark:text-brand-400"
+                        : "nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400";
+                });
+
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+
+            bindEvents() {
+                // Navigation buttons
+                document.querySelectorAll("[data-nav]").forEach(btn => {
+                    btn.addEventListener("click", () => this.navigate(btn.dataset.nav));
+                });
+
+                // Theme toggles
+                document.getElementById("desktop-theme-toggle").addEventListener("click", () => {
+                    const isDark = this.#themeManager.toggle();
+                    this.showToast(isDark ? "Switched to Dark Mode" : "Switched to Light Mode");
+                });
+                document.getElementById("mobile-theme-toggle").addEventListener("click", () => {
+                    const isDark = this.#themeManager.toggle();
+                    this.showToast(isDark ? "Switched to Dark Mode" : "Switched to Light Mode");
+                });
+
+                // Reset Demo Data
+                document.getElementById("btn-reset-demo").addEventListener("click", async () => {
+                    const confirmed = await this.confirmAction(
+                        "Reset Demo Data?",
+                        "This will restore the default sample subjects, tasks, study schedules, and notes."
+                    );
+                    if (confirmed) {
+                        this.seedSampleData();
+                        this.renderAll();
+                        this.showToast("Sample academic data restored!");
+                    }
+                });
+
+                // Task Form Submit
+                document.getElementById("task-form").addEventListener("submit", (e) => {
+                    e.preventDefault();
+                    this.handleTaskSubmit();
+                });
+                document.getElementById("task-cancel-edit").addEventListener("click", () => this.resetTaskForm());
+
+                // Task Filters
+                document.querySelectorAll(".task-filter-btn").forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        this.#taskFilter = btn.dataset.filter;
+                        document.querySelectorAll(".task-filter-btn").forEach(b => {
+                            b.className = b.dataset.filter === this.#taskFilter
+                                ? "task-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-zinc-900 text-white dark:bg-brand-600"
+                                : "task-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-obsidian-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300";
+                        });
+                        this.renderTasks();
+                    });
+                });
+
+                // Subject Form Submit
+                document.getElementById("subject-form").addEventListener("submit", (e) => {
+                    e.preventDefault();
+                    this.handleSubjectSubmit();
+                });
+                document.getElementById("subject-cancel-edit").addEventListener("click", () => this.resetSubjectForm());
+
+                // Schedule Form Submit
+                document.getElementById("schedule-form").addEventListener("submit", (e) => {
+                    e.preventDefault();
+                    this.handleScheduleSubmit();
+                });
+                document.getElementById("schedule-cancel-edit").addEventListener("click", () => this.resetScheduleForm());
+
+                // Study Notes Events (Create, Search, Auto-save, Delete)
+                document.getElementById("btn-new-note").addEventListener("click", () => this.createNewNote());
+                document.getElementById("notes-search").addEventListener("input", () => this.renderNotesList());
+
+                const triggerAutoSave = () => {
+                    const statusEl = document.getElementById("note-autosave-status");
+                    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> Saving...`;
+                    clearTimeout(this.#autoSaveTimer);
+                    this.#autoSaveTimer = setTimeout(() => this.autoSaveActiveNote(), 300);
+                };
+
+                document.getElementById("note-title-input").addEventListener("input", triggerAutoSave);
+                document.getElementById("note-subject-select").addEventListener("change", triggerAutoSave);
+                document.getElementById("note-content-input").addEventListener("input", triggerAutoSave);
+
+                document.getElementById("btn-delete-active-note").addEventListener("click", () => this.deleteActiveNote());
+
+                // Live OOP Showcase Console Buttons
+                document.getElementById("btn-demo-polymorphism").addEventListener("click", () => this.runPolymorphismDemo());
+                document.getElementById("btn-demo-abstraction").addEventListener("click", () => this.runAbstractionDemo());
+                document.getElementById("btn-demo-encapsulation").addEventListener("click", () => this.runEncapsulationDemo());
+            }
+
+            // ================================================================
+            // SUBJECT OPERATIONS
+            // ================================================================
+            handleSubjectSubmit() {
+                const editId = document.getElementById("subject-edit-id").value;
+                const name = document.getElementById("subject-name").value;
+                const description = document.getElementById("subject-desc").value;
+
+                try {
+                    if (editId) {
+                        const existing = this.#subjectsRepo.findById(editId);
+                        if (existing) {
+                            existing.name = name;
+                            existing.description = description;
+                            this.#subjectsRepo.save();
+                            this.showToast("Subject updated successfully!");
+                        }
+                    } else {
+                        const subject = new Subject({ name, description });
+                        this.#subjectsRepo.add(subject);
+                        this.showToast("Subject added!");
+                    }
+                    this.resetSubjectForm();
+                    this.renderAll();
+                } catch (err) {
+                    this.showToast(err.message, "error");
+                }
+            }
+
+            editSubject(id) {
+                const subj = this.#subjectsRepo.findById(id);
+                if (!subj) return;
+                document.getElementById("subject-edit-id").value = subj.id;
+                document.getElementById("subject-name").value = subj.name;
+                document.getElementById("subject-desc").value = subj.description;
+                document.getElementById("subject-form-title").textContent = "Edit Subject";
+                document.getElementById("subject-submit-btn").textContent = "Update";
+                document.getElementById("subject-cancel-edit").classList.remove("hidden");
+                document.getElementById("subject-name").focus();
+            }
+
+            resetSubjectForm() {
+                document.getElementById("subject-form").reset();
+                document.getElementById("subject-edit-id").value = "";
+                document.getElementById("subject-form-title").textContent = "Add New Subject";
+                document.getElementById("subject-submit-btn").textContent = "Save";
+                document.getElementById("subject-cancel-edit").classList.add("hidden");
+            }
+
+            async deleteSubject(id) {
+                const confirmed = await this.confirmAction(
+                    "Delete Subject?",
+                    "Are you sure you want to remove this subject? Tasks assigned to it will display 'General'."
+                );
+                if (!confirmed) return;
+                this.#subjectsRepo.remove(id);
+                this.renderAll();
+                this.showToast("Subject deleted.");
+            }
+
+            getSubjectName(subjectId) {
+                const subj = this.#subjectsRepo.findById(subjectId);
+                return subj ? subj.name : "General / Unassigned";
+            }
+
+            // ================================================================
+            // TASK OPERATIONS
+            // ================================================================
+            handleTaskSubmit() {
+                const editId = document.getElementById("task-edit-id").value;
+                const title = document.getElementById("task-title").value;
+                const subjectId = document.getElementById("task-subject").value;
+                const deadline = document.getElementById("task-deadline").value;
+                const priority = document.getElementById("task-priority").value;
+
+                try {
+                    if (editId) {
+                        const task = this.#tasksRepo.findById(editId);
+                        if (task) {
+                            task.title = title;
+                            task.subjectId = subjectId;
+                            task.deadline = deadline;
+                            task.priority = priority;
+                            this.#tasksRepo.save();
+                            this.showToast("Task updated!");
+                        }
+                    } else {
+                        const task = new Task({ title, subjectId, deadline, priority });
+                        this.#tasksRepo.add(task);
+                        this.showToast("New task added!");
+                    }
+                    this.resetTaskForm();
+                    this.renderAll();
+                } catch (err) {
+                    this.showToast(err.message, "error");
+                }
+            }
+
+            toggleTask(id) {
+                const task = this.#tasksRepo.findById(id);
+                if (!task) return;
+                const isDone = task.toggleCompleted();
+                this.#tasksRepo.save();
+                this.renderAll();
+                this.showToast(isDone ? "Task marked as completed!" : "Task marked as pending.");
+            }
+
+            editTask(id) {
+                const task = this.#tasksRepo.findById(id);
+                if (!task) return;
+                document.getElementById("task-edit-id").value = task.id;
+                document.getElementById("task-title").value = task.title;
+                document.getElementById("task-subject").value = task.subjectId;
+                document.getElementById("task-deadline").value = task.deadline;
+                document.getElementById("task-priority").value = task.priority;
+                document.getElementById("task-form-title").textContent = "Edit Task";
+                document.getElementById("task-submit-btn").textContent = "Update Task";
+                document.getElementById("task-cancel-edit").classList.remove("hidden");
+                document.getElementById("task-title").focus();
+            }
+
+            resetTaskForm() {
+                document.getElementById("task-form").reset();
+                document.getElementById("task-edit-id").value = "";
+                document.getElementById("task-form-title").textContent = "Add New Task";
+                document.getElementById("task-submit-btn").textContent = "Save Task";
+                document.getElementById("task-cancel-edit").classList.add("hidden");
+            }
+
+            async deleteTask(id) {
+                const confirmed = await this.confirmAction("Delete Task?", "This task will be permanently deleted.");
+                if (!confirmed) return;
+                this.#tasksRepo.remove(id);
+                this.renderAll();
+                this.showToast("Task deleted.");
+            }
+
+            // ================================================================
+            // SCHEDULE OPERATIONS
+            // ================================================================
+            handleScheduleSubmit() {
+                const editId = document.getElementById("schedule-edit-id").value;
+                const activity = document.getElementById("schedule-activity").value;
+                const subjectId = document.getElementById("schedule-subject").value;
+                const date = document.getElementById("schedule-date").value;
+                const time = document.getElementById("schedule-time").value;
+
+                try {
+                    if (editId) {
+                        const item = this.#schedulesRepo.findById(editId);
+                        if (item) {
+                            item.activity = activity;
+                            item.subjectId = subjectId;
+                            item.date = date;
+                            item.time = time;
+                            this.#schedulesRepo.save();
+                            this.showToast("Study session updated!");
+                        }
+                    } else {
+                        const item = new StudySchedule({ activity, subjectId, date, time });
+                        this.#schedulesRepo.add(item);
+                        this.showToast("Study session scheduled!");
+                    }
+                    this.resetScheduleForm();
+                    this.renderAll();
+                } catch (err) {
+                    this.showToast(err.message, "error");
+                }
+            }
+
+            editSchedule(id) {
+                const item = this.#schedulesRepo.findById(id);
+                if (!item) return;
+                document.getElementById("schedule-edit-id").value = item.id;
+                document.getElementById("schedule-activity").value = item.activity;
+                document.getElementById("schedule-subject").value = item.subjectId;
+                document.getElementById("schedule-date").value = item.date;
+                document.getElementById("schedule-time").value = item.time;
+                document.getElementById("schedule-form-title").textContent = "Edit Study Session";
+                document.getElementById("schedule-submit-btn").textContent = "Update Session";
+                document.getElementById("schedule-cancel-edit").classList.remove("hidden");
+                document.getElementById("schedule-activity").focus();
+            }
+
+            resetScheduleForm() {
+                document.getElementById("schedule-form").reset();
+                document.getElementById("schedule-edit-id").value = "";
+                
